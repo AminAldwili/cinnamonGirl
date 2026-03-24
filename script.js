@@ -1,4 +1,3 @@
-
 window.requestAnimationFrame =
 window.__requestAnimationFrame ||
     window.requestAnimationFrame ||
@@ -18,98 +17,127 @@ window.__requestAnimationFrame ||
             element.__lastTime = currTime + timeToCall;
         };
     })();
-window.isDevice = 
-(/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(((navigator.userAgent 
+window.isDevice =
+(/android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(((navigator.userAgent
     || navigator.vendor || window.opera)).toLowerCase()));
 var loaded = false;
 var init = function () {
 if (loaded) return;
 loaded = true;
 var mobile = window.isDevice;
-var koef = mobile ? 0.5 : 1;
 var canvas = document.getElementById('heart');
 var ctx = canvas.getContext('2d');
-var width = canvas.width = koef * innerWidth;
-var height = canvas.height = koef * innerHeight;
 var rand = Math.random;
-ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
-ctx.fillRect(0, 0, width, height);
+var width;
+var height;
+var viewportWidth;
+var viewportHeight;
 
 var heartPosition = function (rad) {
-    //return [Math.sin(rad), Math.cos(rad)];
-    return [Math.pow(Math.sin(rad), 3), 
-        -(15 * Math.cos(rad) - 5 * 
-        Math.cos(2 * rad) - 2 * 
+    return [Math.pow(Math.sin(rad), 3),
+        -(15 * Math.cos(rad) - 5 *
+        Math.cos(2 * rad) - 2 *
         Math.cos(3 * rad) - Math.cos(4 * rad))];
 };
 var scaleAndTranslate = function (pos, sx, sy, dx, dy) {
     return [dx + pos[0] * sx, dy + pos[1] * sy];
 };
 
-window.addEventListener('resize', function () {
-    width = canvas.width = koef * innerWidth;
-    height = canvas.height = koef * innerHeight;
-    ctx.fillStyle = "rgba(232, 14, 14, 0.44)";
-    ctx.fillRect(0, 0, width, height);
-});
+var buildHeartPoints = function () {
+    viewportWidth = window.innerWidth;
+    viewportHeight = window.innerHeight;
 
-var traceCount = mobile ? 20 : 50;
+    var renderScale = mobile ? Math.min(window.devicePixelRatio || 1, 1.25) : 1;
+    width = canvas.width = Math.max(320, Math.floor(viewportWidth * renderScale));
+    height = canvas.height = Math.max(480, Math.floor(viewportHeight * renderScale));
+    canvas.style.width = viewportWidth + 'px';
+    canvas.style.height = viewportHeight + 'px';
+
+    ctx.setTransform(width / viewportWidth, 0, 0, height / viewportHeight, 0, 0);
+    ctx.clearRect(0, 0, viewportWidth, viewportHeight);
+
+    var compact = mobile || viewportWidth < 700;
+    var baseX = compact ? Math.min(viewportWidth * 0.24, 108) : 210;
+    var baseY = compact ? Math.min(viewportHeight * 0.014, 7.5) : 13;
+    var density = compact ? 0.22 : 0.1;
+
+    pointsOrigin = [];
+    for (i = 0; i < Math.PI * 2; i += density) {
+        pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseX, baseY, 0, 0));
+    }
+    for (i = 0; i < Math.PI * 2; i += density) {
+        pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseX * 0.72, baseY * 0.7, 0, 0));
+    }
+    for (i = 0; i < Math.PI * 2; i += density) {
+        pointsOrigin.push(scaleAndTranslate(heartPosition(i), baseX * 0.44, baseY * 0.4, 0, 0));
+    }
+
+    heartPointsCount = pointsOrigin.length;
+    traceCount = compact ? 14 : 42;
+    targetPoints = new Array(heartPointsCount);
+    e = [];
+
+    for (i = 0; i < heartPointsCount; i++) {
+        var x = rand() * viewportWidth;
+        var y = rand() * viewportHeight;
+        e[i] = {
+            vx: 0,
+            vy: 0,
+            speed: compact ? rand() * 0.8 + 2.6 : rand() + 5,
+            q: ~~(rand() * heartPointsCount),
+            D: 2 * (i % 2) - 1,
+            force: compact ? 0.78 + rand() * 0.08 : 0.2 * rand() + 0.7,
+            f: compact
+                ? 'hsla(347,' + ~~(25 * rand() + 65) + '%,' + ~~(18 * rand() + 58) + '%,.22)'
+                : 'hsla(0,' + ~~(40 * rand() + 60) + '%,' + ~~(60 * rand() + 20) + '%,.3)',
+            trace: []
+        };
+
+        for (var k = 0; k < traceCount; k++) {
+            e[i].trace[k] = { x: x, y: y };
+        }
+    }
+}
+
+window.addEventListener('resize', buildHeartPoints);
+
+var traceCount = mobile ? 14 : 42;
 var pointsOrigin = [];
-var i;
-var dr = mobile ? 0.3 : 0.1;
-for (i = 0; i < Math.PI * 2; i += dr) 
-pointsOrigin.push(scaleAndTranslate(heartPosition(i), 210, 13, 0, 0));
-for (i = 0; i < Math.PI * 2; i += dr) 
-pointsOrigin.push(scaleAndTranslate(heartPosition(i), 150, 9, 0, 0));
-for (i = 0; i < Math.PI * 2; i += dr) 
-pointsOrigin.push(scaleAndTranslate(heartPosition(i), 90, 5, 0, 0));
-var heartPointsCount = pointsOrigin.length;
-
+var heartPointsCount = 0;
 var targetPoints = [];
+var e = [];
+var i;
+
 var pulse = function (kx, ky) {
+    var centerX = viewportWidth / 2;
+    var centerY = mobile ? viewportHeight * 0.42 : viewportHeight / 2;
     for (i = 0; i < pointsOrigin.length; i++) {
         targetPoints[i] = [];
-        targetPoints[i][0] = kx * pointsOrigin[i][0] + width / 2;
-        targetPoints[i][1] = ky * pointsOrigin[i][1] + height / 2;
+        targetPoints[i][0] = kx * pointsOrigin[i][0] + centerX;
+        targetPoints[i][1] = ky * pointsOrigin[i][1] + centerY;
     }
 };
 
-var e = [];
-for (i = 0; i < heartPointsCount; i++) {
-    var x = rand() * width;
-    var y = rand() * height;
-    e[i] = {
-        vx: 0,
-        vy: 0,
-        R: 2,
-        speed: rand() + 5,
-        q: ~~(rand() * heartPointsCount),
-        D: 2 * (i % 2) - 1,
-        force: 0.2 * rand() + 0.7,
-        f: "hsla(0," + ~~(40 * rand() + 60) + "%," + ~~(60 * rand() + 20) + "%,.3)",
-        trace: []
-    };
-    for (var k = 0; k < traceCount; k++) e[i].trace[k] = {x: x, y: y};
-}
+buildHeartPoints();
 
 var config = {
-    traceK: 0.4,
-    timeDelta: 0.01
+    traceK: mobile ? 0.22 : 0.4,
+    timeDelta: mobile ? 0.006 : 0.01
 };
 
 var time = 0;
 var loop = function () {
     var n = -Math.cos(time);
-    pulse((1 + n) * .5, (1 + n) * .5);
-    time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? .2 : 1) * config.timeDelta;
-    ctx.fillStyle = "rgba(237, 217, 217, 0.01)";
-    ctx.fillRect(0, 0, width, height);
+    pulse((1 + n) * 0.5, (1 + n) * 0.5);
+    time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? 0.2 : 1) * config.timeDelta;
+    ctx.fillStyle = mobile ? 'rgba(255, 230, 235, 0.08)' : 'rgba(237, 217, 217, 0.01)';
+    ctx.fillRect(0, 0, viewportWidth, viewportHeight);
     for (i = e.length; i--;) {
         var u = e[i];
         var q = targetPoints[u.q];
         var dx = u.trace[0].x - q[0];
         var dy = u.trace[0].y - q[1];
-        var length = Math.sqrt(dx * dx + dy * dy);
+        var length = Math.sqrt(dx * dx + dy * dy) || 1;
         if (10 > length) {
             if (0.95 < rand()) {
                 u.q = ~~(rand() * heartPointsCount);
@@ -131,7 +159,7 @@ var loop = function () {
         u.trace[0].y += u.vy;
         u.vx *= u.force;
         u.vy *= u.force;
-        for (k = 0; k < u.trace.length - 1;) {
+        for (var k = 0; k < u.trace.length - 1;) {
             var T = u.trace[k];
             var N = u.trace[++k];
             N.x -= config.traceK * (N.x - T.x);
@@ -139,11 +167,9 @@ var loop = function () {
         }
         ctx.fillStyle = u.f;
         for (k = 0; k < u.trace.length; k++) {
-            ctx.fillRect(u.trace[k].x, u.trace[k].y, 1, 1);
+            ctx.fillRect(u.trace[k].x, u.trace[k].y, 1.2, 1.2);
         }
     }
-    //ctx.fillStyle = "rgba(255,255,255,1)";
-    //for (i = u.trace.length; i--;) ctx.fillRect(targetPoints[i][0], targetPoints[i][1], 2, 2);
 
     window.requestAnimationFrame(loop, canvas);
 };
@@ -153,4 +179,3 @@ loop();
 var s = document.readyState;
 if (s === 'complete' || s === 'loaded' || s === 'interactive') init();
 else document.addEventListener('DOMContentLoaded', init, false);
-
