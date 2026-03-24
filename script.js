@@ -49,7 +49,7 @@ var scaleAndTranslate = function (pos, sx, sy, dx, dy) {
 window.addEventListener('resize', function () {
     width = canvas.width = koef * innerWidth;
     height = canvas.height = koef * innerHeight;
-    ctx.fillStyle = "rgba(0,0,0,1)";
+    ctx.fillStyle = "rgba(42, 42, 42, 0.19)";
     ctx.fillRect(0, 0, width, height);
 });
 
