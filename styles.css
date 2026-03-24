@@ -20,7 +20,7 @@ body {
 }
 #heart {
     height: 100%;
-    width: 90%;
+    width: 100%;
     position: relative;
     pointer-events: none;
     border-radius: 16%;
