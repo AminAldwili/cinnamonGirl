@@ -49,7 +49,7 @@ var scaleAndTranslate = function (pos, sx, sy, dx, dy) {
 window.addEventListener('resize', function () {
     width = canvas.width = koef * innerWidth;
     height = canvas.height = koef * innerHeight;
-    ctx.fillStyle = "rgba(42, 42, 42, 0.19)";
+    ctx.fillStyle = "rgba(232, 14, 14, 0.44)";
     ctx.fillRect(0, 0, width, height);
 });
 
@@ -102,7 +102,7 @@ var loop = function () {
     var n = -Math.cos(time);
     pulse((1 + n) * .5, (1 + n) * .5);
     time += ((Math.sin(time)) < 0 ? 9 : (n > 0.8) ? .2 : 1) * config.timeDelta;
-    ctx.fillStyle = "rgba(0,0,0,.1)";
+    ctx.fillStyle = "rgba(237, 217, 217, 0.01)";
     ctx.fillRect(0, 0, width, height);
     for (i = e.length; i--;) {
         var u = e[i];
